@@ -8,7 +8,8 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from ttkthemes import ThemedTk
 from pdf_logic import PDFLogic
-import tkdnd2
+# import tkdnd2   # <- quita esto si no usas drag & drop
+from llm_translator import traducir_pdf_a_markdown
 
 
 class PDFCombinerApp:
@@ -79,10 +80,13 @@ class PDFCombinerApp:
             row=0, column=4, padx=5
         )
 
+        # NUEVO: botón para traducir un PDF (EN->ES) usando el modelo local
+        ttk.Button(
+            main_frame, text="Traducir PDF (EN→ES)", command=self.traducir_pdf_en_es
+        ).pack(pady=(10, 0))
+
     def agregar_pdfs(self):
-        """
-        Abre un diálogo para seleccionar archivos PDF y los agrega a la lista.
-        """
+        """Abre un diálogo para seleccionar archivos PDF y los agrega a la lista."""
         archivos = filedialog.askopenfilenames(
             title="Selecciona archivos PDF", filetypes=[("Archivos PDF", "*.pdf")]
         )
@@ -91,9 +95,7 @@ class PDFCombinerApp:
         self.refrescar_lista()
 
     def eliminar_seleccionado(self):
-        """
-        Elimina el archivo PDF seleccionado de la lista.
-        """
+        """Elimina el archivo PDF seleccionado de la lista."""
         sel = self.listbox.curselection()
         if not sel:
             messagebox.showwarning(
@@ -105,9 +107,7 @@ class PDFCombinerApp:
         self.refrescar_lista()
 
     def mover_arriba(self):
-        """
-        Mueve el archivo PDF seleccionado hacia arriba en la lista.
-        """
+        """Mueve el archivo PDF seleccionado hacia arriba en la lista."""
         sel = self.listbox.curselection()
         if not sel or sel[0] == 0:
             return
@@ -117,9 +117,7 @@ class PDFCombinerApp:
         self.listbox.select_set(idx - 1)
 
     def mover_abajo(self):
-        """
-        Mueve el archivo PDF seleccionado hacia abajo en la lista.
-        """
+        """Mueve el archivo PDF seleccionado hacia abajo en la lista."""
         sel = self.listbox.curselection()
         if not sel or sel[0] == len(self.logic.get_pdf_list()) - 1:
             return
@@ -129,17 +127,13 @@ class PDFCombinerApp:
         self.listbox.select_set(idx + 1)
 
     def refrescar_lista(self):
-        """
-        Actualiza la listbox con la lista actual de PDFs.
-        """
+        """Actualiza la listbox con la lista actual de PDFs."""
         self.listbox.delete(0, tk.END)
         for archivo in self.logic.get_pdf_list():
             self.listbox.insert(tk.END, archivo)
 
     def combinar_pdfs(self):
-        """
-        Combina los PDFs seleccionados y guarda el resultado.
-        """
+        """Combina los PDFs seleccionados y guarda el resultado."""
         if len(self.logic.get_pdf_list()) < 2:
             messagebox.showwarning(
                 "Advertencia", "Debes agregar al menos dos PDFs para combinar."
@@ -172,7 +166,6 @@ class PDFCombinerApp:
             )
             return
 
-        # Confirmación de eliminación
         confirm = messagebox.askyesno(
             "Confirmar eliminación",
             "Esta acción combinará los PDFs y eliminará los archivos originales.\n"
@@ -202,9 +195,50 @@ class PDFCombinerApp:
                     )
                     messagebox.showwarning(
                         "Advertencia",
-                        f"PDFs combinados, pero algunos archivos no pudieron ser eliminados:\n\n{failed_list}",
+                        "PDFs combinados, pero algunos archivos no pudieron ser "
+                        f"eliminados:\n\n{failed_list}",
                     )
         except Exception as e:
             messagebox.showerror(
                 "Error", f"Ocurrió un error al procesar los PDFs:\n{e}"
             )
+
+    def traducir_pdf_en_es(self):
+        """
+        Pide un PDF en inglés, lo traduce al español usando el modelo local
+        y guarda un archivo Markdown sencillo (.md) con la traducción.
+        """
+        ruta_pdf = filedialog.askopenfilename(
+            title="Selecciona un PDF en inglés para traducir",
+            filetypes=[("Archivos PDF", "*.pdf")],
+        )
+        if not ruta_pdf:
+            return
+
+        ruta_md = filedialog.asksaveasfilename(
+            defaultextension=".md",
+            filetypes=[("Markdown", "*.md"), ("Texto", "*.txt")],
+            title="Guardar traducción como",
+        )
+        if not ruta_md:
+            return
+
+        try:
+            self.root.config(cursor="watch")
+            self.root.update_idletasks()
+
+            markdown = traducir_pdf_a_markdown(ruta_pdf)
+
+            with open(ruta_md, "w", encoding="utf-8") as f:
+                f.write(markdown)
+
+            messagebox.showinfo(
+                "Traducción completada", f"Traducción guardada en:\n{ruta_md}"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Error de traducción", f"Ocurrió un error al traducir el PDF:\n{e}"
+            )
+        finally:
+            self.root.config(cursor="")
+            self.root.update_idletasks()

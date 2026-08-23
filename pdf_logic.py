@@ -103,7 +103,9 @@ class PDFLogic:
             bool: True si es administrador, False en caso contrario.
         """
         try:
-            return ctypes.windll.shell32.IsUserAnAdmin()
+            if os.name == "nt":
+                return bool(ctypes.windll.shell32.IsUserAnAdmin())
+            return os.geteuid() == 0
         except:
             return False
 

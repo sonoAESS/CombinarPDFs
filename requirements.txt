@@ -29,7 +29,7 @@ PyPDF2==3.0.1
 pywin32-ctypes==0.2.3
 requests==2.32.4
 setuptools==80.9.0
-ttkthemes==3.2.2
+sv-ttk==2.6.1
 typing_extensions==4.14.1
 urllib3==2.5.0
 zope.event==5.1.1

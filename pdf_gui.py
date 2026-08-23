@@ -5,8 +5,8 @@ Este módulo contiene la clase PDFCombinerApp que maneja la interfaz de usuario.
 """
 
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, filedialog, messagebox
-from ttkthemes import ThemedTk
 from pdf_logic import PDFLogic
 # import tkdnd2   # <- quita esto si no usas drag & drop
 from llm_translator import traducir_pdf_a_markdown
@@ -44,10 +44,14 @@ class PDFCombinerApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill="both", expand=True)
 
+        # Fuente monoespaciada multiplataforma (basada en la fuente fija del sistema)
+        mono_font = tkfont.nametofont("TkFixedFont").copy()
+        mono_font.configure(size=11)
+
         self.listbox = tk.Listbox(
             list_frame,
             selectmode=tk.SINGLE,
-            font=("Consolas", 11),
+            font=mono_font,
             height=12,
             bd=2,
             relief="ridge",

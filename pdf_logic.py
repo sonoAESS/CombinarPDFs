@@ -27,45 +27,81 @@ class PDFLogic:
 
         Args:
             pdf_path (str): Ruta del archivo PDF a agregar.
+
+        Returns:
+            bool: True si se agregó, False si ya estaba en la lista.
         """
         if pdf_path not in self.pdf_files:
             self.pdf_files.append(pdf_path)
+            return True
+        return False
 
-    def remove_pdf(self, index):
+    def remove_indices(self, indices):
         """
-        Remueve un archivo PDF de la lista por índice.
+        Remueve varios archivos de la lista por índice.
 
-        Args:
-            index (int): Índice del archivo a remover.
-        """
-        if 0 <= index < len(self.pdf_files):
-            self.pdf_files.pop(index)
-
-    def move_up(self, index):
-        """
-        Mueve un archivo PDF hacia arriba en la lista.
+        Los índices inválidos se ignoran silenciosamente.
 
         Args:
-            index (int): Índice del archivo a mover.
+            indices (iterable de int): Índices a remover.
         """
-        if index > 0:
-            self.pdf_files[index - 1], self.pdf_files[index] = (
-                self.pdf_files[index],
-                self.pdf_files[index - 1],
-            )
+        for idx in sorted(set(indices), reverse=True):
+            if 0 <= idx < len(self.pdf_files):
+                self.pdf_files.pop(idx)
 
-    def move_down(self, index):
+    def clear(self):
+        """Vacía la lista de archivos PDF."""
+        self.pdf_files.clear()
+
+    def move_block_to(self, indices, target_first):
         """
-        Mueve un archivo PDF hacia abajo en la lista.
+        Coloca el bloque formado por `indices` de modo que el primero
+        quede en `target_first`, preservando el orden relativo interno.
 
         Args:
-            index (int): Índice del archivo a mover.
+            indices (iterable de int): Índices actuales del bloque.
+            target_first (int): Posición destino para el primer elemento.
+
+        Returns:
+            list[int]: Nuevos índices que ocupa el bloque tras el movimiento.
         """
-        if index < len(self.pdf_files) - 1:
-            self.pdf_files[index + 1], self.pdf_files[index] = (
-                self.pdf_files[index],
-                self.pdf_files[index + 1],
-            )
+        sel = sorted(set(indices))
+        total = len(self.pdf_files)
+        if not sel or not all(0 <= i < total for i in sel):
+            return []
+        k = len(sel)
+        target_first = max(0, min(target_first, total - k))
+
+        seleccionados = [self.pdf_files[i] for i in sel]
+        resto = [
+            ruta for i, ruta in enumerate(self.pdf_files) if i not in set(sel)
+        ]
+        resto[target_first:target_first] = seleccionados
+        self.pdf_files[:] = resto
+        return list(range(target_first, target_first + k))
+
+    def move(self, indices, delta):
+        """
+        Mueve el bloque seleccionado delta posiciones (delta -1 = subir,
+        +1 = bajar). Si el bloque ya está en el borde correspondiente no
+        hace nada.
+
+        Args:
+            indices (iterable de int): Índices actuales del bloque.
+            delta (int): Desplazamiento (-1 o +1).
+
+        Returns:
+            list[int]: Nuevos índices del bloque tras el movimiento.
+        """
+        sel = sorted(set(indices))
+        if not sel:
+            return []
+        total = len(self.pdf_files)
+        if delta < 0 and sel[0] == 0:
+            return sel
+        if delta > 0 and sel[-1] == total - 1:
+            return sel
+        return self.move_block_to(sel, sel[0] + delta)
 
     def get_pdf_list(self):
         """

@@ -5,14 +5,19 @@ Esta aplicación permite combinar múltiples archivos PDF en uno solo mediante u
 ## Características
 
 - Seleccionar y agregar archivos PDF desde el explorador de archivos.
-- Reordenar los PDFs en la lista antes de combinarlos.
-- Eliminar PDFs de la lista.
+- Multiselección en la lista (Ctrl+clic, Shift+clic o arrastrando el ratón).
+- Reordenar los PDFs antes de combinarlos: botones Subir/Bajar, menú contextual
+  (clic derecho) o arrastrando y soltando las filas directamente.
+- Eliminar uno o varios archivos a la vez (botón, clic derecho o tecla Supr),
+  o vaciar toda la lista con confirmación.
+- Barra de estado con contador de archivos y selección actual.
 - Combinar los PDFs y guardar el resultado en un archivo nuevo.
+- Interfaz oscura moderna (tema Sun Valley) compatible con Linux, Windows y macOS.
 
 ## Requisitos
 
-- Python 3.x
-- Bibliotecas: tkinter, ttkthemes, PyPDF2
+- Python 3.8+ (compatible también con Tk 9.x)
+- Bibliotecas: tkinter, sv-ttk, PyPDF2
 
 ## Instalación
 
@@ -29,10 +34,13 @@ Esta aplicación permite combinar múltiples archivos PDF en uno solo mediante u
 ## Uso
 
 1. Ejecuta `main.py`.
-2. Haz clic en "Agregar PDFs" para seleccionar archivos.
-3. Reordena si es necesario usando "Subir" y "Bajar".
-4. Elimina archivos seleccionados con "Eliminar Seleccionado".
-5. Haz clic en "Combinar PDFs" y selecciona dónde guardar el archivo resultante.
+2. Haz clic en "Agregar PDFs" para seleccionar archivos (los duplicados se omiten).
+3. Selecciona uno o varios archivos con Ctrl+clic, Shift+clic o arrastrando.
+4. Reordénalos con "Subir"/"Bajar", con el menú contextual (clic derecho)
+   o arrastrando las filas a su posición.
+5. Elimina lo seleccionado con "Eliminar Seleccionados" o la tecla Supr;
+   usa "Vaciar Lista" para empezar de cero.
+6. Haz clic en "Combinar PDFs" y selecciona dónde guardar el archivo resultante.
 
 ## Estructura del Proyecto
 

@@ -8,14 +8,18 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk, filedialog, messagebox
 from pdf_logic import PDFLogic
-# import tkdnd2   # <- quita esto si no usas drag & drop
-from llm_translator import traducir_pdf_a_markdown
+
+# Máscara de modificadores (Shift / Ctrl) que desactivan el arrastre
+_MOD_SHIFT = 0x0001
+_MOD_CTRL = 0x0004
 
 
 class PDFCombinerApp:
     """
     Clase principal de la aplicación para combinar PDFs con interfaz gráfica.
     """
+
+    UMBRAL_ARRASTRE = 5  # píxeles mínimos para distinguir clic de arrastre
 
     def __init__(self, root):
         """
@@ -26,11 +30,11 @@ class PDFCombinerApp:
         """
         self.root = root
         self.root.title("Combinador de PDFs")
-        self.root.geometry("600x450")
+        self.root.geometry("640x500")
+        self.root.minsize(520, 430)
         self.logic = PDFLogic()
-
-        # Aplicar tema
-        self.style = ttk.Style(self.root)
+        self._drag = None
+        self._msg_token = 0
 
         # Marco principal
         main_frame = ttk.Frame(self.root, padding=15)
@@ -38,23 +42,24 @@ class PDFCombinerApp:
 
         # Etiqueta título
         title_label = ttk.Label(main_frame, text="Lista de PDFs a combinar:")
-        title_label.pack(pady=(0, 10))
+        title_label.pack(anchor="w", pady=(0, 10))
 
-        # Listbox con scroll
+        # Listbox con scroll (selección múltiple con Ctrl y Shift)
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill="both", expand=True)
 
-        # Fuente monoespaciada multiplataforma (basada en la fuente fija del sistema)
         mono_font = tkfont.nametofont("TkFixedFont").copy()
         mono_font.configure(size=11)
 
         self.listbox = tk.Listbox(
             list_frame,
-            selectmode=tk.SINGLE,
+            selectmode=tk.EXTENDED,
             font=mono_font,
             height=12,
             bd=2,
             relief="ridge",
+            activestyle="none",
+            exportselection=False,
         )
         self.listbox.pack(side="left", fill="both", expand=True)
 
@@ -64,77 +69,282 @@ class PDFCombinerApp:
         scrollbar.pack(side="right", fill="y")
         self.listbox.config(yscrollcommand=scrollbar.set)
 
+        # Eventos de la lista
+        self.listbox.bind("<<ListboxSelect>>", self.actualizar_estado)
+        self.listbox.bind("<Delete>", lambda e: self.eliminar_seleccionados())
+        self.listbox.bind("<KP_Delete>", lambda e: self.eliminar_seleccionados())
+        self.listbox.bind("<ButtonPress-1>", self._arrastre_inicio)
+        self.listbox.bind("<B1-Motion>", self._arrastre_movimiento)
+        self.listbox.bind("<ButtonRelease-1>", self._arrastre_fin)
+        self.listbox.bind("<Button-3>", self._menu_contextual)
+
+        # Menú contextual (clic derecho)
+        self.menu_ctx = tk.Menu(self.root, tearoff=0)
+        self.menu_ctx.add_command(
+            label="Subir", command=self.mover_arriba, accelerator="Ctrl+Up"
+        )
+        self.menu_ctx.add_command(
+            label="Bajar", command=self.mover_abajo, accelerator="Ctrl+Down"
+        )
+        self.menu_ctx.add_separator()
+        self.menu_ctx.add_command(
+            label="Eliminar seleccionados",
+            command=self.eliminar_seleccionados,
+            accelerator="Supr",
+        )
+        self.menu_ctx.add_separator()
+        self.menu_ctx.add_command(label="Vaciar lista", command=self.vaciar_lista)
+
+        # Atajos de teclado
+        self.root.bind("<Control-Up>", lambda e: self.mover_arriba())
+        self.root.bind("<Control-Down>", lambda e: self.mover_abajo())
+
         # Frame botones
         btn_frame = ttk.Frame(main_frame, padding=(0, 10, 0, 0))
-        btn_frame.pack()
+        btn_frame.pack(fill="x")
 
-        ttk.Button(btn_frame, text="Agregar PDFs", command=self.agregar_pdfs).grid(
-            row=0, column=0, padx=5
+        self.btn_agregar = ttk.Button(
+            btn_frame, text="Agregar PDFs", command=self.agregar_pdfs
         )
-        ttk.Button(
-            btn_frame, text="Eliminar Seleccionado", command=self.eliminar_seleccionado
-        ).grid(row=0, column=1, padx=5)
-        ttk.Button(btn_frame, text="Subir", command=self.mover_arriba).grid(
-            row=0, column=2, padx=5
+        self.btn_eliminar = ttk.Button(
+            btn_frame, text="Eliminar Seleccionados", command=self.eliminar_seleccionados
         )
-        ttk.Button(btn_frame, text="Bajar", command=self.mover_abajo).grid(
-            row=0, column=3, padx=5
-        )
-        ttk.Button(btn_frame, text="Combinar PDFs", command=self.combinar_pdfs).grid(
-            row=0, column=4, padx=5
+        self.btn_subir = ttk.Button(btn_frame, text="Subir", command=self.mover_arriba)
+        self.btn_bajar = ttk.Button(btn_frame, text="Bajar", command=self.mover_abajo)
+        self.btn_vaciar = ttk.Button(
+            btn_frame, text="Vaciar Lista", command=self.vaciar_lista
         )
 
-        # NUEVO: botón para traducir un PDF (EN->ES) usando el modelo local
-        ttk.Button(
-            main_frame, text="Traducir PDF (EN→ES)", command=self.traducir_pdf_en_es
-        ).pack(pady=(10, 0))
+        botones = (
+            self.btn_agregar,
+            self.btn_eliminar,
+            self.btn_subir,
+            self.btn_bajar,
+            self.btn_vaciar,
+        )
+        for columna, boton in enumerate(botones):
+            boton.grid(row=0, column=columna, padx=(0, 5), sticky="ew")
+            btn_frame.columnconfigure(columna, weight=1)
+
+        self.btn_combinar = ttk.Button(
+            btn_frame, text="Combinar PDFs", command=self.combinar_pdfs
+        )
+        self.btn_combinar.grid(row=1, column=0, columnspan=len(botones), sticky="ew", pady=(10, 0))
+
+        # Barra de estado
+        self.status_var = tk.StringVar(value="0 PDFs en lista")
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, anchor="w")
+        status_bar.pack(fill="x", pady=(10, 0))
+
+        self.refrescar_lista()
+
+    # ------------------------------------------------------------------
+    # Gestión de la lista
+    # ------------------------------------------------------------------
 
     def agregar_pdfs(self):
         """Abre un diálogo para seleccionar archivos PDF y los agrega a la lista."""
         archivos = filedialog.askopenfilenames(
             title="Selecciona archivos PDF", filetypes=[("Archivos PDF", "*.pdf")]
         )
+        if not archivos:
+            return
+        agregados = omitidos = 0
         for archivo in archivos:
-            self.logic.add_pdf(archivo)
+            if self.logic.add_pdf(archivo):
+                agregados += 1
+            else:
+                omitidos += 1
+        mensaje = f"{agregados} PDF{'s' if agregados != 1 else ''} agregado{'s' if agregados != 1 else ''}"
+        if omitidos:
+            mensaje += f" · {omitidos} ya {'estaban' if omitidos != 1 else 'estaba'} en la lista"
         self.refrescar_lista()
+        self.mostrar_mensaje(mensaje)
 
-    def eliminar_seleccionado(self):
-        """Elimina el archivo PDF seleccionado de la lista."""
+    def eliminar_seleccionados(self):
+        """Elimina todos los archivos PDF seleccionados de la lista."""
         sel = self.listbox.curselection()
         if not sel:
             messagebox.showwarning(
-                "Advertencia", "Debes seleccionar un archivo para eliminar."
+                "Advertencia", "Debes seleccionar al menos un archivo para eliminar."
             )
             return
-        idx = sel[0]
-        self.logic.remove_pdf(idx)
+        primero = sel[0]
+        self.logic.remove_indices(sel)
+        self.refrescar_lista()
+        # Deja seleccionado el elemento que quedó en esa posición
+        total = self.listbox.size()
+        if total:
+            nuevo = min(primero, total - 1)
+            self.listbox.selection_set(nuevo)
+            self.listbox.see(nuevo)
+        self.mostrar_mensaje(f"{len(sel)} archivo{'s' if len(sel) != 1 else ''} eliminado{'s' if len(sel) != 1 else ''}")
+
+    def vaciar_lista(self):
+        """Elimina todos los archivos de la lista previa confirmación."""
+        if not self.listbox.size():
+            return
+        confirmar = messagebox.askyesno(
+            "Vaciar lista",
+            f"Se quitarán los {self.listbox.size()} archivos de la lista.\n\n¿Deseas continuar?",
+        )
+        if not confirmar:
+            return
+        self.logic.clear()
         self.refrescar_lista()
 
     def mover_arriba(self):
-        """Mueve el archivo PDF seleccionado hacia arriba en la lista."""
+        """Mueve el bloque seleccionado una posición hacia arriba."""
         sel = self.listbox.curselection()
         if not sel or sel[0] == 0:
             return
-        idx = sel[0]
-        self.logic.move_up(idx)
-        self.refrescar_lista()
-        self.listbox.select_set(idx - 1)
+        nuevos = self.logic.move(sel, -1)
+        self.refrescar_lista(seleccion=nuevos)
 
     def mover_abajo(self):
-        """Mueve el archivo PDF seleccionado hacia abajo en la lista."""
+        """Mueve el bloque seleccionado una posición hacia abajo."""
         sel = self.listbox.curselection()
-        if not sel or sel[0] == len(self.logic.get_pdf_list()) - 1:
+        if not sel or sel[-1] == self.listbox.size() - 1:
             return
-        idx = sel[0]
-        self.logic.move_down(idx)
-        self.refrescar_lista()
-        self.listbox.select_set(idx + 1)
+        nuevos = self.logic.move(sel, +1)
+        self.refrescar_lista(seleccion=nuevos)
 
-    def refrescar_lista(self):
-        """Actualiza la listbox con la lista actual de PDFs."""
+    def refrescar_lista(self, seleccion=None):
+        """
+        Actualiza la listbox con la lista actual de PDFs.
+
+        Args:
+            seleccion (list[int], opcional): Índices a marcar como seleccionados.
+        """
         self.listbox.delete(0, tk.END)
         for archivo in self.logic.get_pdf_list():
             self.listbox.insert(tk.END, archivo)
+        if seleccion:
+            for indice in seleccion:
+                self.listbox.selection_set(indice)
+            self.listbox.see(seleccion[0])
+        self.actualizar_estado()
+
+    # ------------------------------------------------------------------
+    # Barra de estado y estado de botones
+    # ------------------------------------------------------------------
+
+    def actualizar_estado(self, *_):
+        """Actualiza el texto de la barra de estado y el estado de los botones."""
+        total = self.listbox.size()
+        marcados = len(self.listbox.curselection())
+
+        hay_sel = "normal" if marcados else "disabled"
+        self.btn_eliminar.configure(state=hay_sel)
+        self.btn_subir.configure(state=hay_sel)
+        self.btn_bajar.configure(state=hay_sel)
+        self.btn_vaciar.configure(state="normal" if total else "disabled")
+        self.btn_combinar.configure(state="normal" if total >= 2 else "disabled")
+
+        texto = f"{total} PDF{'s' if total != 1 else ''} en lista"
+        if marcados:
+            texto += f" · {marcados} seleccionado{'s' if marcados != 1 else ''}"
+        self.status_var.set(texto)
+
+    def mostrar_mensaje(self, texto, milisegundos=4000):
+        """
+        Muestra un mensaje transitorio en la barra de estado.
+
+        Args:
+            texto (str): Mensaje a mostrar.
+            milisegundos (int): Tiempo antes de volver al estado normal.
+        """
+        self._msg_token += 1
+        token = self._msg_token
+        self.status_var.set(texto)
+        self.root.after(
+            milisegundos,
+            lambda: token == self._msg_token and self.actualizar_estado(),
+        )
+
+    # ------------------------------------------------------------------
+    # Arrastrar y soltar interno para reordenar
+    # ------------------------------------------------------------------
+
+    def _arrastre_inicio(self, evento):
+        """Prepara los datos del posible arrastre al pulsar sobre la lista."""
+        self._drag = None
+        if evento.state & (_MOD_SHIFT | _MOD_CTRL):
+            return  # clic extendido de selección, no arrastre
+        indice = self.listbox.nearest(evento.y)
+        if indice < 0 or indice >= self.listbox.size():
+            return
+        self._drag = {
+            "y": evento.y,
+            "indice": indice,
+            "activo": False,
+            "desplazamiento": 0,
+        }
+
+    def _arrastre_movimiento(self, evento):
+        """Reordena en vivo el bloque seleccionado mientras se arrastra."""
+        datos = self._drag
+        if datos is None:
+            return
+
+        if not datos["activo"]:
+            if abs(evento.y - datos["y"]) < self.UMBRAL_ARRASTRE:
+                return
+            sel = list(self.listbox.curselection())
+            if datos["indice"] in sel:
+                datos["desplazamiento"] = datos["indice"] - min(sel)
+            else:
+                datos["desplazamiento"] = 0
+            datos["activo"] = True
+
+        destino = self.listbox.nearest(evento.y)
+        total = self.listbox.size()
+        if destino < 0 or destino >= total:
+            return
+
+        sel = sorted(self.listbox.curselection())
+        if not sel:
+            return
+        bloque = len(sel)
+        objetivo = max(0, min(destino - datos["desplazamiento"], total - bloque))
+        if objetivo != sel[0]:
+            nuevos = self.logic.move_block_to(sel, objetivo)
+            self.refrescar_lista(seleccion=nuevos)
+
+    def _arrastre_fin(self, *_):
+        """Finaliza el arrastre."""
+        self._drag = None
+
+    # ------------------------------------------------------------------
+    # Menú contextual
+    # ------------------------------------------------------------------
+
+    def _menu_contextual(self, evento):
+        """Muestra el menú contextual de la lista en la posición del cursor."""
+        indice = self.listbox.nearest(evento.y)
+        dentro = 0 <= indice < self.listbox.size()
+        if dentro and indice not in self.listbox.curselection():
+            # Clic derecho fuera de la selección: selecciona solo esa fila
+            self.listbox.selection_clear(0, tk.END)
+            self.listbox.selection_set(indice)
+            self.actualizar_estado()
+
+        sel = self.listbox.curselection()
+        hay_sel = bool(sel)
+        estado_sel = "normal" if hay_sel else "disabled"
+        self.menu_ctx.entryconfig("Subir", state="normal" if hay_sel and sel[0] > 0 else "disabled")
+        self.menu_ctx.entryconfig("Bajar", state="normal" if hay_sel and sel[-1] < self.listbox.size() - 1 else "disabled")
+        self.menu_ctx.entryconfig("Eliminar seleccionados", state=estado_sel)
+        self.menu_ctx.entryconfig("Vaciar lista", state="normal" if self.listbox.size() else "disabled")
+
+        try:
+            self.menu_ctx.tk_popup(evento.x_root, evento.y_root)
+        finally:
+            self.menu_ctx.grab_release()
+
+    # ------------------------------------------------------------------
+    # Acciones principales
+    # ------------------------------------------------------------------
 
     def combinar_pdfs(self):
         """Combina los PDFs seleccionados y guarda el resultado."""
@@ -206,43 +416,3 @@ class PDFCombinerApp:
             messagebox.showerror(
                 "Error", f"Ocurrió un error al procesar los PDFs:\n{e}"
             )
-
-    def traducir_pdf_en_es(self):
-        """
-        Pide un PDF en inglés, lo traduce al español usando el modelo local
-        y guarda un archivo Markdown sencillo (.md) con la traducción.
-        """
-        ruta_pdf = filedialog.askopenfilename(
-            title="Selecciona un PDF en inglés para traducir",
-            filetypes=[("Archivos PDF", "*.pdf")],
-        )
-        if not ruta_pdf:
-            return
-
-        ruta_md = filedialog.asksaveasfilename(
-            defaultextension=".md",
-            filetypes=[("Markdown", "*.md"), ("Texto", "*.txt")],
-            title="Guardar traducción como",
-        )
-        if not ruta_md:
-            return
-
-        try:
-            self.root.config(cursor="watch")
-            self.root.update_idletasks()
-
-            markdown = traducir_pdf_a_markdown(ruta_pdf)
-
-            with open(ruta_md, "w", encoding="utf-8") as f:
-                f.write(markdown)
-
-            messagebox.showinfo(
-                "Traducción completada", f"Traducción guardada en:\n{ruta_md}"
-            )
-        except Exception as e:
-            messagebox.showerror(
-                "Error de traducción", f"Ocurrió un error al traducir el PDF:\n{e}"
-            )
-        finally:
-            self.root.config(cursor="")
-            self.root.update_idletasks()

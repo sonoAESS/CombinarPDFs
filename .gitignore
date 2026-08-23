@@ -1,1 +1,5 @@
-entorno 
+entorno/
+__pycache__/
+*.py[cod]
+build/
+dist/

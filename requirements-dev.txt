@@ -1,0 +1,11 @@
+# Dependencias de desarrollo y construcción (no necesarias para ejecutar la app)
+#
+# Empaquetado y herramientas
+pyinstaller==6.14.2
+auto-py-to-exe==2.46.0
+pillow==11.3.0
+
+# Traducción con LLM local (parte futura, no usada por la GUI actual)
+llama-cpp-python==0.3.16
+pypdf==6.6.2
+numpy==2.4.2

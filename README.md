@@ -1,6 +1,21 @@
 # Combinador de PDFs
 
+[![Builds](https://github.com/sonoAESS/CombinarPDFs/actions/workflows/release.yml/badge.svg)](https://github.com/sonoAESS/CombinarPDFs/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/sonoAESS/CombinarPDFs)](https://github.com/sonoAESS/CombinarPDFs/releases/latest)
+
 Esta aplicación permite combinar múltiples archivos PDF en uno solo mediante una interfaz gráfica intuitiva.
+
+## Descargas
+
+Ejecutables listos para usar en la página de
+[Releases](https://github.com/sonoAESS/CombinarPDFs/releases):
+
+- **Windows**: `CombinadorPDFs-windows-x64.exe` — doble clic y listo.
+- **Linux**: `CombinadorPDFs-linux-x64.bin` — dale permisos de ejecución y ábrelo:
+  ```bash
+  chmod +x CombinadorPDFs-linux-x64.bin
+  ./CombinadorPDFs-linux-x64.bin
+  ```
 
 ## Características
 
@@ -22,14 +37,28 @@ Esta aplicación permite combinar múltiples archivos PDF en uno solo mediante u
 ## Instalación
 
 1. Clona o descarga este repositorio.
-2. Instala las dependencias:
+2. (Opcional) Crea un entorno virtual.
+3. Instala las dependencias:
    ```
    pip install -r requirements.txt
    ```
-3. Ejecuta la aplicación:
+4. Ejecuta la aplicación:
    ```
    python main.py
    ```
+
+### Construir el ejecutable
+
+Con las dependencias de desarrollo instaladas (`pip install -r requirements-dev.txt`),
+genera el binario de tu plataforma con:
+
+```
+pyinstaller --noconfirm --clean CombinadorPDFs.spec
+```
+
+El resultado queda en `dist/`. Para generar los ejecutables de Windows y Linux
+automáticamente, basta con crear un tag `v*.*.*` y subirlo: GitHub Actions
+compila ambos y los adjunta a la release.
 
 ## Uso
 
@@ -47,7 +76,12 @@ Esta aplicación permite combinar múltiples archivos PDF en uno solo mediante u
 - `main.py`: Punto de entrada de la aplicación.
 - `pdf_gui.py`: Interfaz gráfica de usuario.
 - `pdf_logic.py`: Lógica para combinar PDFs.
-- `requirements.txt`: Dependencias del proyecto.
+- `assets/`: Icono de la aplicación (PNG e ICO).
+- `tools/`: Scripts auxiliares (generación del icono, hooks de PyInstaller).
+- `CombinadorPDFs.spec`: Configuración de PyInstaller para los ejecutables.
+- `.github/workflows/release.yml`: CI que compila los ejecutables y publica releases.
+- `requirements.txt`: Dependencias en tiempo de ejecución.
+- `requirements-dev.txt`: Dependencias de desarrollo y construcción.
 - `README.md`: Este archivo de documentación.
 
 ## Contribuciones

@@ -10,7 +10,46 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Los intérpretes de setup-python incluyen tkinter; esta comprobación
+      # lo verifica pronto para que un fallo sea evidente.
+      - name: Comprobar soporte Tk
+        run: python -c "import tkinter; print('Tk', tkinter.TkVersion)"
+
+      - name: Instalar el paquete (incluye extras de desarrollo)
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Tests de GUI (Linux, headless)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run -a python -m pytest -q
+
+      - name: Tests de GUI (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pytest -q
+
   build:
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -28,15 +67,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Los intérpretes de setup-python incluyen tkinter; esta comprobación
-      # lo verifica pronto para que un fallo sea evidente.
       - name: Comprobar soporte Tk
         run: python -c "import tkinter; print('Tk', tkinter.TkVersion)"
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install . pyinstaller
 
       - name: Compilar ejecutable
         run: pyinstaller --noconfirm --clean CombinadorPDFs.spec

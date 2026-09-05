@@ -12,11 +12,53 @@ Uso:
 
 import glob
 import os
+import platform
 import sys
 
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, get_package_paths
 
 sv_datas, sv_binaries, sv_hiddenimports = collect_all("sv_ttk")
+
+# ------------------------------------------------------------------
+# tkinterdnd2: la subcarpeta de tkdnd depende de la plataforma y de la
+# version de Tcl. El hook automatico de pyinstaller-hooks-contrib todavia
+# recoge solo las carpetas compiladas para Tcl 8; con Tcl 9.x (Tk 9.0) la
+# libreria se carga desde la subcarpeta "<plataforma>-tcl9", que hay que
+# empaquetar manualmente.
+# ------------------------------------------------------------------
+def _recoleccion_tkdnd():
+    if sys.platform == "win32":
+        maquina = os.environ.get("PROCESSOR_ARCHITECTURE", platform.machine())
+        subcarpetas = {"AMD64": "win-x64", "x86": "win-x86", "ARM64": "win-arm64"}
+    elif sys.platform == "darwin":
+        maquina = platform.machine()
+        subcarpetas = {"x86_64": "osx-x64", "arm64": "osx-arm64"}
+    else:
+        maquina = platform.machine()
+        subcarpetas = {"x86_64": "linux-x64", "aarch64": "linux-arm64"}
+
+    rep = subcarpetas.get(maquina)
+    if rep is None:
+        raise SystemExit(f"tkinterdnd2: plataforma no soportada ({maquina})")
+
+    nombre = rep + "-tcl9"
+    _, pkg_dir = get_package_paths("tkinterdnd2")
+    origen = os.path.join(pkg_dir, "tkdnd", nombre)
+    if not os.path.isdir(origen):
+        raise SystemExit(f"tkinterdnd2: no se encontro la subcarpeta tkdnd/{nombre}")
+
+    destino = os.path.join("tkinterdnd2", "tkdnd", nombre)
+    binarios = []
+    datos = []
+    for f in os.listdir(origen):
+        ruta = os.path.join(origen, f)
+        if f.endswith(".so"):
+            binarios.append((ruta, destino))
+        else:
+            datos.append((ruta, destino))
+    return binarios, datos
+
+tkdnd_binaries, tkdnd_datas = _recoleccion_tkdnd()
 
 icono = "assets/icon.ico" if sys.platform == "win32" else None
 
@@ -43,8 +85,8 @@ for prefijo in dict.fromkeys([getattr(sys, "base_prefix", sys.prefix), sys.prefi
 a = Analysis(
     ["main.py"],
     pathex=[],
-    binaries=sv_binaries + binaries_tcltk,
-    datas=[("assets/icon.png", "assets")] + sv_datas + datas_tcltk,
+    binaries=sv_binaries + binaries_tcltk + tkdnd_binaries,
+    datas=[("assets/icon.png", "assets")] + sv_datas + datas_tcltk + tkdnd_datas,
     hiddenimports=sv_hiddenimports,
     hookspath=[],
     hooksconfig={},

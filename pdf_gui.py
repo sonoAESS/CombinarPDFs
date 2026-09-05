@@ -4,14 +4,29 @@ Módulo para la interfaz gráfica de la aplicación de combinación de PDFs.
 Este módulo contiene la clase PDFCombinerApp que maneja la interfaz de usuario.
 """
 
+from __future__ import annotations
+
 import tkinter as tk
 import tkinter.font as tkfont
-from tkinter import ttk, filedialog, messagebox
+from collections.abc import Iterable
+from dataclasses import dataclass
+from tkinter import filedialog, messagebox, ttk
+
 from pdf_logic import PDFLogic
 
 # Máscara de modificadores (Shift / Ctrl) que desactivan el arrastre
 _MOD_SHIFT = 0x0001
 _MOD_CTRL = 0x0004
+
+
+@dataclass
+class _Arrastre:
+    """Estado del arrastre para reordenar filas de la lista."""
+
+    y: int
+    indice: int
+    activo: bool
+    desplazamiento: int
 
 
 class PDFCombinerApp:
@@ -21,7 +36,7 @@ class PDFCombinerApp:
 
     UMBRAL_ARRASTRE = 5  # píxeles mínimos para distinguir clic de arrastre
 
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk) -> None:
         """
         Inicializa la aplicación.
 
@@ -33,7 +48,7 @@ class PDFCombinerApp:
         self.root.geometry("640x500")
         self.root.minsize(520, 430)
         self.logic = PDFLogic()
-        self._drag = None
+        self._drag: _Arrastre | None = None
         self._msg_token = 0
 
         # Marco principal
@@ -107,7 +122,9 @@ class PDFCombinerApp:
             btn_frame, text="Agregar PDFs", command=self.agregar_pdfs
         )
         self.btn_eliminar = ttk.Button(
-            btn_frame, text="Eliminar Seleccionados", command=self.eliminar_seleccionados
+            btn_frame,
+            text="Eliminar Seleccionados",
+            command=self.eliminar_seleccionados,
         )
         self.btn_subir = ttk.Button(btn_frame, text="Subir", command=self.mover_arriba)
         self.btn_bajar = ttk.Button(btn_frame, text="Bajar", command=self.mover_abajo)
@@ -129,7 +146,18 @@ class PDFCombinerApp:
         self.btn_combinar = ttk.Button(
             btn_frame, text="Combinar PDFs", command=self.combinar_pdfs
         )
-        self.btn_combinar.grid(row=1, column=0, columnspan=len(botones), sticky="ew", pady=(10, 0))
+        self.btn_combinar.grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0), padx=(0, 5)
+        )
+
+        self.btn_combinar_eliminar = ttk.Button(
+            btn_frame,
+            text="Combinar y eliminar originales",
+            command=self.combinar_y_eliminar,
+        )
+        self.btn_combinar_eliminar.grid(
+            row=1, column=2, columnspan=3, sticky="ew", pady=(10, 0)
+        )
 
         # Barra de estado
         self.status_var = tk.StringVar(value="0 PDFs en lista")
@@ -142,26 +170,44 @@ class PDFCombinerApp:
     # Gestión de la lista
     # ------------------------------------------------------------------
 
-    def agregar_pdfs(self):
+    def agregar_pdfs(self) -> None:
         """Abre un diálogo para seleccionar archivos PDF y los agrega a la lista."""
         archivos = filedialog.askopenfilenames(
             title="Selecciona archivos PDF", filetypes=[("Archivos PDF", "*.pdf")]
         )
         if not archivos:
             return
-        agregados = omitidos = 0
-        for archivo in archivos:
-            if self.logic.add_pdf(archivo):
-                agregados += 1
-            else:
-                omitidos += 1
-        mensaje = f"{agregados} PDF{'s' if agregados != 1 else ''} agregado{'s' if agregados != 1 else ''}"
-        if omitidos:
-            mensaje += f" · {omitidos} ya {'estaban' if omitidos != 1 else 'estaba'} en la lista"
+        self.agregar_rutas(archivos)
+
+    def agregar_rutas(self, rutas: Iterable[str]) -> None:
+        """
+        Agrega un conjunto de rutas a la lista y muestra un resumen.
+
+        Args:
+            rutas (Iterable[str]): Rutas a agregar.
+        """
+        agregados, ya_presentes, errores = self.logic.add_pdfs(rutas)
+        mensaje = (
+            f"{agregados} PDF{'s' if agregados != 1 else ''} "
+            f"agregado{'s' if agregados != 1 else ''}"
+        )
+        if ya_presentes:
+            mensaje += (
+                f" · {ya_presentes} ya "
+                f"{'estaban' if ya_presentes != 1 else 'estaba'} en la lista"
+            )
+        if errores:
+            mensaje += (
+                f" · {len(errores)} {'error' if len(errores) == 1 else 'errores'}"
+            )
+            messagebox.showwarning(
+                "Archivos no válidos",
+                "Los siguientes archivos no se agregaron:\n\n" + "\n".join(errores),
+            )
         self.refrescar_lista()
         self.mostrar_mensaje(mensaje)
 
-    def eliminar_seleccionados(self):
+    def eliminar_seleccionados(self) -> None:
         """Elimina todos los archivos PDF seleccionados de la lista."""
         sel = self.listbox.curselection()
         if not sel:
@@ -178,22 +224,27 @@ class PDFCombinerApp:
             nuevo = min(primero, total - 1)
             self.listbox.selection_set(nuevo)
             self.listbox.see(nuevo)
-        self.mostrar_mensaje(f"{len(sel)} archivo{'s' if len(sel) != 1 else ''} eliminado{'s' if len(sel) != 1 else ''}")
+        plural = len(sel) != 1
+        self.mostrar_mensaje(
+            f"{len(sel)} archivo{'s' if plural else ''}"
+            f" eliminado{'s' if plural else ''}"
+        )
 
-    def vaciar_lista(self):
+    def vaciar_lista(self) -> None:
         """Elimina todos los archivos de la lista previa confirmación."""
         if not self.listbox.size():
             return
         confirmar = messagebox.askyesno(
             "Vaciar lista",
-            f"Se quitarán los {self.listbox.size()} archivos de la lista.\n\n¿Deseas continuar?",
+            f"Se quitarán los {self.listbox.size()} archivos de la lista.\n\n"
+            "¿Deseas continuar?",
         )
         if not confirmar:
             return
         self.logic.clear()
         self.refrescar_lista()
 
-    def mover_arriba(self):
+    def mover_arriba(self) -> None:
         """Mueve el bloque seleccionado una posición hacia arriba."""
         sel = self.listbox.curselection()
         if not sel or sel[0] == 0:
@@ -201,7 +252,7 @@ class PDFCombinerApp:
         nuevos = self.logic.move(sel, -1)
         self.refrescar_lista(seleccion=nuevos)
 
-    def mover_abajo(self):
+    def mover_abajo(self) -> None:
         """Mueve el bloque seleccionado una posición hacia abajo."""
         sel = self.listbox.curselection()
         if not sel or sel[-1] == self.listbox.size() - 1:
@@ -209,7 +260,7 @@ class PDFCombinerApp:
         nuevos = self.logic.move(sel, +1)
         self.refrescar_lista(seleccion=nuevos)
 
-    def refrescar_lista(self, seleccion=None):
+    def refrescar_lista(self, seleccion: list[int] | None = None) -> None:
         """
         Actualiza la listbox con la lista actual de PDFs.
 
@@ -229,7 +280,7 @@ class PDFCombinerApp:
     # Barra de estado y estado de botones
     # ------------------------------------------------------------------
 
-    def actualizar_estado(self, *_):
+    def actualizar_estado(self, *_: object) -> None:
         """Actualiza el texto de la barra de estado y el estado de los botones."""
         total = self.listbox.size()
         marcados = len(self.listbox.curselection())
@@ -240,13 +291,16 @@ class PDFCombinerApp:
         self.btn_bajar.configure(state=hay_sel)
         self.btn_vaciar.configure(state="normal" if total else "disabled")
         self.btn_combinar.configure(state="normal" if total >= 2 else "disabled")
+        self.btn_combinar_eliminar.configure(
+            state="normal" if total >= 2 else "disabled"
+        )
 
         texto = f"{total} PDF{'s' if total != 1 else ''} en lista"
         if marcados:
             texto += f" · {marcados} seleccionado{'s' if marcados != 1 else ''}"
         self.status_var.set(texto)
 
-    def mostrar_mensaje(self, texto, milisegundos=4000):
+    def mostrar_mensaje(self, texto: str, milisegundos: int = 4000) -> None:
         """
         Muestra un mensaje transitorio en la barra de estado.
 
@@ -257,45 +311,47 @@ class PDFCombinerApp:
         self._msg_token += 1
         token = self._msg_token
         self.status_var.set(texto)
-        self.root.after(
-            milisegundos,
-            lambda: token == self._msg_token and self.actualizar_estado(),
-        )
+        self.root.after(milisegundos, lambda: self._restaurar_estado(token))
+
+    def _restaurar_estado(self, token: int) -> None:
+        """Restaura la barra de estado si el mensaje sigue vigente."""
+        if token == self._msg_token:
+            self.actualizar_estado()
 
     # ------------------------------------------------------------------
     # Arrastrar y soltar interno para reordenar
     # ------------------------------------------------------------------
 
-    def _arrastre_inicio(self, evento):
+    def _arrastre_inicio(self, evento: tk.Event[tk.Misc]) -> None:
         """Prepara los datos del posible arrastre al pulsar sobre la lista."""
         self._drag = None
-        if evento.state & (_MOD_SHIFT | _MOD_CTRL):
+        if int(evento.state) & (_MOD_SHIFT | _MOD_CTRL):
             return  # clic extendido de selección, no arrastre
         indice = self.listbox.nearest(evento.y)
         if indice < 0 or indice >= self.listbox.size():
             return
-        self._drag = {
-            "y": evento.y,
-            "indice": indice,
-            "activo": False,
-            "desplazamiento": 0,
-        }
+        self._drag = _Arrastre(
+            y=evento.y,
+            indice=indice,
+            activo=False,
+            desplazamiento=0,
+        )
 
-    def _arrastre_movimiento(self, evento):
+    def _arrastre_movimiento(self, evento: tk.Event[tk.Misc]) -> None:
         """Reordena en vivo el bloque seleccionado mientras se arrastra."""
         datos = self._drag
         if datos is None:
             return
 
-        if not datos["activo"]:
-            if abs(evento.y - datos["y"]) < self.UMBRAL_ARRASTRE:
+        if not datos.activo:
+            if abs(evento.y - datos.y) < self.UMBRAL_ARRASTRE:
                 return
             sel = list(self.listbox.curselection())
-            if datos["indice"] in sel:
-                datos["desplazamiento"] = datos["indice"] - min(sel)
+            if datos.indice in sel:
+                datos.desplazamiento = datos.indice - min(sel)
             else:
-                datos["desplazamiento"] = 0
-            datos["activo"] = True
+                datos.desplazamiento = 0
+            datos.activo = True
 
         destino = self.listbox.nearest(evento.y)
         total = self.listbox.size()
@@ -306,12 +362,12 @@ class PDFCombinerApp:
         if not sel:
             return
         bloque = len(sel)
-        objetivo = max(0, min(destino - datos["desplazamiento"], total - bloque))
+        objetivo = max(0, min(destino - datos.desplazamiento, total - bloque))
         if objetivo != sel[0]:
             nuevos = self.logic.move_block_to(sel, objetivo)
             self.refrescar_lista(seleccion=nuevos)
 
-    def _arrastre_fin(self, *_):
+    def _arrastre_fin(self, *_: object) -> None:
         """Finaliza el arrastre."""
         self._drag = None
 
@@ -319,7 +375,7 @@ class PDFCombinerApp:
     # Menú contextual
     # ------------------------------------------------------------------
 
-    def _menu_contextual(self, evento):
+    def _menu_contextual(self, evento: tk.Event[tk.Misc]) -> None:
         """Muestra el menú contextual de la lista en la posición del cursor."""
         indice = self.listbox.nearest(evento.y)
         dentro = 0 <= indice < self.listbox.size()
@@ -332,10 +388,19 @@ class PDFCombinerApp:
         sel = self.listbox.curselection()
         hay_sel = bool(sel)
         estado_sel = "normal" if hay_sel else "disabled"
-        self.menu_ctx.entryconfig("Subir", state="normal" if hay_sel and sel[0] > 0 else "disabled")
-        self.menu_ctx.entryconfig("Bajar", state="normal" if hay_sel and sel[-1] < self.listbox.size() - 1 else "disabled")
+        self.menu_ctx.entryconfig(
+            "Subir", state="normal" if hay_sel and sel[0] > 0 else "disabled"
+        )
+        self.menu_ctx.entryconfig(
+            "Bajar",
+            state="normal"
+            if hay_sel and sel[-1] < self.listbox.size() - 1
+            else "disabled",
+        )
         self.menu_ctx.entryconfig("Eliminar seleccionados", state=estado_sel)
-        self.menu_ctx.entryconfig("Vaciar lista", state="normal" if self.listbox.size() else "disabled")
+        self.menu_ctx.entryconfig(
+            "Vaciar lista", state="normal" if self.listbox.size() else "disabled"
+        )
 
         try:
             self.menu_ctx.tk_popup(evento.x_root, evento.y_root)
@@ -346,7 +411,7 @@ class PDFCombinerApp:
     # Acciones principales
     # ------------------------------------------------------------------
 
-    def combinar_pdfs(self):
+    def combinar_pdfs(self) -> None:
         """Combina los PDFs seleccionados y guarda el resultado."""
         if len(self.logic.get_pdf_list()) < 2:
             messagebox.showwarning(
@@ -365,12 +430,12 @@ class PDFCombinerApp:
             messagebox.showinfo(
                 "Éxito", f"PDFs combinados exitosamente en:\n{output_file}"
             )
-        except Exception as e:
+        except Exception as exc:
             messagebox.showerror(
-                "Error", f"Ocurrió un error al combinar los PDFs:\n{e}"
+                "Error", f"Ocurrió un error al combinar los PDFs:\n{exc}"
             )
 
-    def combinar_y_eliminar(self):
+    def combinar_y_eliminar(self) -> None:
         """
         Combina los PDFs y elimina los originales (requiere permisos de administrador).
         """
@@ -398,21 +463,19 @@ class PDFCombinerApp:
 
         try:
             success, result = self.logic.combine_and_delete_originals(output_file)
-            if success:
-                messagebox.showinfo("Éxito", result)
-            else:
-                if isinstance(result, str):
-                    messagebox.showerror("Error", result)
+            if isinstance(result, str):
+                if success:
+                    messagebox.showinfo("Éxito", result)
                 else:
-                    failed_list = "\n".join(
-                        [f"{pdf}: {error}" for pdf, error in result]
-                    )
-                    messagebox.showwarning(
-                        "Advertencia",
-                        "PDFs combinados, pero algunos archivos no pudieron ser "
-                        f"eliminados:\n\n{failed_list}",
-                    )
-        except Exception as e:
+                    messagebox.showerror("Error", result)
+            else:
+                failed_list = "\n".join([f"{pdf}: {error}" for pdf, error in result])
+                messagebox.showwarning(
+                    "Advertencia",
+                    "PDFs combinados, pero algunos archivos no pudieron ser "
+                    f"eliminados:\n\n{failed_list}",
+                )
+        except Exception as exc:
             messagebox.showerror(
-                "Error", f"Ocurrió un error al procesar los PDFs:\n{e}"
+                "Error", f"Ocurrió un error al procesar los PDFs:\n{exc}"
             )

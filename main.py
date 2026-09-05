@@ -25,7 +25,7 @@ def resource_path(ruta_relativa: str) -> str:
 def main() -> None:
     """Crea la ventana principal y arranca el bucle de eventos de Tk."""
     root = tk.Tk()
-    app = PDFCombinerApp(root)
+    PDFCombinerApp(root)
     try:
         _icono = tk.PhotoImage(file=resource_path(os.path.join("assets", "icon.png")))
         root.iconphoto(True, _icono)

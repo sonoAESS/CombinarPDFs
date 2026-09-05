@@ -25,9 +25,10 @@ def _es_pdf(ruta: str) -> bool:
 def _clave_serie(nombre_base: str) -> str:
     """
     Devuelve la clave de 'serie' de un nombre de archivo: el nombre base
-    sin la parte numérica final y sin separadores alrededor de ella.
+    sin la extensión ni la parte numérica final (con sus separadores).
     """
-    base = re.sub(r"[\s._()\[\]-]*\d+[\s._()\[\]-]*$", "", nombre_base)
+    sin_ext = re.sub(r"\.pdf$", "", nombre_base, flags=re.IGNORECASE)
+    base = re.sub(r"[\s._()\[\]-]*\d+$", "", sin_ext)
     return base.lower().strip()
 
 

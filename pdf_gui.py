@@ -6,17 +6,27 @@ Este módulo contiene la clase PDFCombinerApp que maneja la interfaz de usuario.
 
 from __future__ import annotations
 
+import os
 import tkinter as tk
 import tkinter.font as tkfont
 from collections.abc import Iterable
 from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
+from typing import Protocol
 
 from pdf_logic import PDFLogic
+
+try:
+    from tkinterdnd2 import DND_FILES
+except ImportError:
+    DND_FILES = ""
 
 # Máscara de modificadores (Shift / Ctrl) que desactivan el arrastre
 _MOD_SHIFT = 0x0001
 _MOD_CTRL = 0x0004
+
+# Color de las filas cuyo nombre de archivo se repite (duplicados)
+COLOR_DUPLICADO = "#e8a33d"
 
 
 @dataclass
@@ -27,6 +37,12 @@ class _Arrastre:
     indice: int
     activo: bool
     desplazamiento: int
+
+
+class _EventoDrop(Protocol):
+    """Evento de tkdnd; las rutas arrastradas viajan en ``.data``."""
+
+    data: str
 
 
 class PDFCombinerApp:
@@ -50,6 +66,8 @@ class PDFCombinerApp:
         self.logic = PDFLogic()
         self._drag: _Arrastre | None = None
         self._msg_token = 0
+        self._duplicados: set[int] = set()
+        self._dnd_activo = False
 
         # Marco principal
         main_frame = ttk.Frame(self.root, padding=15)
@@ -93,6 +111,12 @@ class PDFCombinerApp:
         self.listbox.bind("<ButtonRelease-1>", self._arrastre_fin)
         self.listbox.bind("<Button-3>", self._menu_contextual)
 
+        # Arrastrar y soltar desde el gestor de archivos (tkinterdnd2)
+        if DND_FILES and hasattr(self.root, "drop_target_register"):
+            self.listbox.drop_target_register(DND_FILES)  # type: ignore[attr-defined]
+            self.listbox.dnd_bind("<<Drop>>", self._on_drop)  # type: ignore[attr-defined]
+            self._dnd_activo = True
+
         # Menú contextual (clic derecho)
         self.menu_ctx = tk.Menu(self.root, tearoff=0)
         self.menu_ctx.add_command(
@@ -121,19 +145,21 @@ class PDFCombinerApp:
         self.btn_agregar = ttk.Button(
             btn_frame, text="Agregar PDFs", command=self.agregar_pdfs
         )
+        self.btn_agregar_carpeta = ttk.Button(
+            btn_frame, text="Agregar Carpeta", command=self.agregar_carpeta
+        )
         self.btn_eliminar = ttk.Button(
-            btn_frame,
-            text="Eliminar Seleccionados",
-            command=self.eliminar_seleccionados,
+            btn_frame, text="Eliminar Sel.", command=self.eliminar_seleccionados
         )
         self.btn_subir = ttk.Button(btn_frame, text="Subir", command=self.mover_arriba)
         self.btn_bajar = ttk.Button(btn_frame, text="Bajar", command=self.mover_abajo)
         self.btn_vaciar = ttk.Button(
-            btn_frame, text="Vaciar Lista", command=self.vaciar_lista
+            btn_frame, text="Vaciar", command=self.vaciar_lista
         )
 
         botones = (
             self.btn_agregar,
+            self.btn_agregar_carpeta,
             self.btn_eliminar,
             self.btn_subir,
             self.btn_bajar,
@@ -207,6 +233,61 @@ class PDFCombinerApp:
         self.refrescar_lista()
         self.mostrar_mensaje(mensaje)
 
+    def agregar_carpeta(self) -> None:
+        """
+        Abre un diálogo para elegir una carpeta y agrega sus PDFs,
+        organizando la lista por serie.
+        """
+        carpeta = filedialog.askdirectory(title="Selecciona una carpeta con PDFs")
+        if not carpeta:
+            return
+        self.agregar_carpeta_ruta(carpeta)
+
+    def agregar_carpeta_ruta(self, carpeta: str) -> None:
+        """
+        Agrega los PDFs de una carpeta y los agrupa por serie.
+
+        Args:
+            carpeta (str): Ruta de la carpeta a añadir.
+        """
+        try:
+            agregados, ya_presentes, errores = self.logic.add_pdfs_de_carpeta(carpeta)
+        except NotADirectoryError as exc:
+            messagebox.showerror("Error", str(exc))
+            return
+        if agregados:
+            self.logic.organizar_por_serie()
+        self.refrescar_lista()
+        mensaje = (
+            f"{agregados} PDF{'s' if agregados != 1 else ''} de la carpeta "
+            f"agregado{'s' if agregados != 1 else ''}"
+        )
+        if ya_presentes:
+            mensaje += f" · {ya_presentes} ya estaban en la lista"
+        if errores:
+            messagebox.showwarning(
+                "Archivos no válidos",
+                "Algunos archivos de la carpeta no se agregaron:\n\n"
+                + "\n".join(errores),
+            )
+        self.mostrar_mensaje(mensaje + " · agrupado por serie")
+
+    def _on_drop(self, evento: _EventoDrop) -> None:
+        """
+        Maneja archivos y carpetas soltados desde el gestor de archivos.
+        """
+        if not self._dnd_activo:
+            return
+        rutas = list(self.root.tk.splitlist(evento.data))
+        archivos = [
+            r for r in rutas if os.path.isfile(r) and r.lower().endswith(".pdf")
+        ]
+        carpetas = [r for r in rutas if os.path.isdir(r)]
+        if archivos:
+            self.agregar_rutas(archivos)
+        for carpeta in carpetas:
+            self.agregar_carpeta_ruta(carpeta)
+
     def eliminar_seleccionados(self) -> None:
         """Elimina todos los archivos PDF seleccionados de la lista."""
         sel = self.listbox.curselection()
@@ -268,8 +349,11 @@ class PDFCombinerApp:
             seleccion (list[int], opcional): Índices a marcar como seleccionados.
         """
         self.listbox.delete(0, tk.END)
+        self._duplicados = set(self.logic.indices_duplicados())
         for archivo in self.logic.get_pdf_list():
             self.listbox.insert(tk.END, archivo)
+        for indice in self._duplicados:
+            self.listbox.itemconfig(indice, foreground=COLOR_DUPLICADO)
         if seleccion:
             for indice in seleccion:
                 self.listbox.selection_set(indice)
@@ -296,6 +380,9 @@ class PDFCombinerApp:
         )
 
         texto = f"{total} PDF{'s' if total != 1 else ''} en lista"
+        if self._duplicados:
+            plural = len(self._duplicados) != 1
+            texto += f" · {len(self._duplicados)} duplicado{'s' if plural else ''}"
         if marcados:
             texto += f" · {marcados} seleccionado{'s' if marcados != 1 else ''}"
         self.status_var.set(texto)

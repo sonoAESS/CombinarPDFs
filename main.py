@@ -22,9 +22,20 @@ def resource_path(ruta_relativa: str) -> str:
     return os.path.join(base, ruta_relativa)
 
 
+def crear_ventana() -> tk.Tk:
+    """Crea la ventana raíz, con soporte de arrastrar y soltar si está disponible."""
+    try:
+        from tkinterdnd2 import TkinterDnD
+
+        raiz: tk.Tk = TkinterDnD.Tk()
+        return raiz
+    except (ImportError, tk.TclError):
+        return tk.Tk()
+
+
 def main() -> None:
     """Crea la ventana principal y arranca el bucle de eventos de Tk."""
-    root = tk.Tk()
+    root = crear_ventana()
     PDFCombinerApp(root)
     try:
         _icono = tk.PhotoImage(file=resource_path(os.path.join("assets", "icon.png")))

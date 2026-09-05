@@ -30,11 +30,12 @@ def test_agregar_pdfs_activa_botones(app, crear_pdf):
     assert _estado(app.btn_vaciar) == "normal"
 
 
-def test_agregar_pdfs_omite_duplicados_y_errores(app, crear_pdf):
+def test_agregar_pdfs_omite_duplicados_y_errores(app, crear_pdf, monkeypatch):
     a = crear_pdf("a.pdf")
     invalido = str(Path(a).with_suffix(".txt"))
     with open(invalido, "w") as fh:
         fh.write("no es pdf")
+    monkeypatch.setattr("pdf_gui.messagebox.showwarning", lambda *a, **k: None)
     app.agregar_rutas([a, a, invalido])
     assert app.listbox.size() == 1
 
@@ -94,3 +95,67 @@ def test_combinar_y_eliminar_sin_permisos(app, crear_pdf, monkeypatch, tmp_path:
     monkeypatch.setattr("pdf_gui.messagebox.showerror", _showerror)
     app.combinar_y_eliminar()
     assert errores  # sin permisos de admin debe mostrarse un error
+
+
+def test_duplicados_marcados_en_naranja(app, crear_pdf, tmp_path):
+    from pdf_gui import COLOR_DUPLICADO
+
+    a = crear_pdf("comun.pdf")
+    b = tmp_path / "sub" / "comun.pdf"
+    os.makedirs(b.parent)
+    with open(a, "rb") as origen, open(b, "wb") as destino:
+        destino.write(origen.read())
+    app.agregar_rutas([a, crear_pdf("otro.pdf"), str(b)])
+    assert app.listbox.size() == 3
+    assert app.listbox.itemcget(0, "foreground") == COLOR_DUPLICADO
+    assert app.listbox.itemcget(1, "foreground") != COLOR_DUPLICADO
+    assert app.listbox.itemcget(2, "foreground") == COLOR_DUPLICADO
+    app.actualizar_estado()
+    assert "duplicados" in app.status_var.get()
+
+
+def test_agregar_carpeta_agrupa_por_serie(app, crear_pdf, tmp_path, monkeypatch):
+    for nombre in ["Zeta 5.pdf", "Alfa 10.pdf", "Zeta 1.pdf", "Alfa 2.pdf"]:
+        crear_pdf(nombre)
+    monkeypatch.setattr(
+        "pdf_gui.filedialog.askdirectory", lambda *a, **k: str(tmp_path)
+    )
+    app.agregar_carpeta()
+    bases = [app.listbox.get(i) for i in range(app.listbox.size())]
+    nombres = [Path(b).name for b in bases]
+    assert nombres == ["Alfa 2.pdf", "Alfa 10.pdf", "Zeta 1.pdf", "Zeta 5.pdf"]
+
+
+def test_drop_archivos_en_lista(crear_pdf, tmp_path, monkeypatch):
+
+    try:
+        from tkinterdnd2 import TkinterDnD
+    except ImportError:
+        return
+    from pdf_gui import PDFCombinerApp
+
+    root = TkinterDnD.Tk()
+    root.withdraw()
+    try:
+        app = PDFCombinerApp(root)
+        a = crear_pdf("a.pdf")
+        b = crear_pdf("b.pdf")
+        app._on_drop(type("Ev", (), {"data": f"{{{a}}} {{{b}}}"})())
+        assert app.listbox.size() == 2
+    finally:
+        root.destroy()
+
+
+def test_drop_sin_soporte_dnd(app, crear_pdf, tmp_path):
+    class Evento:
+        def __init__(self, data):
+            self.data = data
+
+    # Ventana sin tkinterdnd2: el drop no hace nada.
+    assert app._dnd_activo is False
+    a = crear_pdf("a.pdf")
+    nota = str(tmp_path / "nota.txt")
+    with open(nota, "w") as fh:
+        fh.write("no pdf")
+    app._on_drop(Evento(f"{{{a}}} {{{nota}}}"))
+    assert app.listbox.size() == 0

@@ -8,6 +8,7 @@ disponible en PyPI).
 
 import contextlib
 import os
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -16,7 +17,13 @@ from PyPDF2 import PdfReader, PdfWriter
 
 
 def _hay_display() -> bool:
-    """True si hay un servidor X / Wayland disponible para Tk."""
+    """True si Tk puede abrir ventanas en esta sesión.
+
+    En Windows y macOS Tk crea la ventana de forma nativa; en Linux/BSD
+    hace falta un servidor X/Wayland (variable DISPLAY o WAYLAND_DISPLAY).
+    """
+    if sys.platform == "darwin" or os.name != "posix":
+        return True
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
@@ -66,6 +73,34 @@ def app(tk):
     ui = PDFCombinerApp(tk)
     tk.update_idletasks()
     return ui
+
+
+@pytest.fixture
+def app_dnd():
+    """
+    Como `app`, pero sobre una raíz con soporte de arrastrar y soltar
+    (`TkinterDnD.Tk`). Se omite el test si no hay pantalla o tkinterdnd2.
+    """
+    try:
+        from tkinterdnd2 import TkinterDnD
+    except ImportError:
+        pytest.skip("tkinterdnd2 no está instalado")
+
+    if not _hay_display():
+        pytest.skip("No hay display disponible para los tests de GUI")
+    import tkinter as tk
+
+    from pdf_gui import PDFCombinerApp
+
+    root = TkinterDnD.Tk()
+    root.withdraw()
+    try:
+        ui = PDFCombinerApp(root)
+        root.update_idletasks()
+        yield ui
+    finally:
+        with contextlib.suppress(tk.TclError):
+            root.destroy()
 
 
 def paginas_de(ruta: str) -> int:

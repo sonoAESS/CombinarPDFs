@@ -126,24 +126,11 @@ def test_agregar_carpeta_agrupa_por_serie(app, crear_pdf, tmp_path, monkeypatch)
     assert nombres == ["Alfa 2.pdf", "Alfa 10.pdf", "Zeta 1.pdf", "Zeta 5.pdf"]
 
 
-def test_drop_archivos_en_lista(crear_pdf, tmp_path, monkeypatch):
-
-    try:
-        from tkinterdnd2 import TkinterDnD
-    except ImportError:
-        return
-    from pdf_gui import PDFCombinerApp
-
-    root = TkinterDnD.Tk()
-    root.withdraw()
-    try:
-        app = PDFCombinerApp(root)
-        a = crear_pdf("a.pdf")
-        b = crear_pdf("b.pdf")
-        app._on_drop(type("Ev", (), {"data": f"{{{a}}} {{{b}}}"})())
-        assert app.listbox.size() == 2
-    finally:
-        root.destroy()
+def test_drop_archivos_en_lista(app_dnd, crear_pdf):
+    a = crear_pdf("a.pdf")
+    b = crear_pdf("b.pdf")
+    app_dnd._on_drop(type("Ev", (), {"data": f"{{{a}}} {{{b}}}"})())
+    assert app_dnd.listbox.size() == 2
 
 
 def test_drop_sin_soporte_dnd(app, crear_pdf, tmp_path):

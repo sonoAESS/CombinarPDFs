@@ -13,10 +13,12 @@ description: Use when running the pytest suite of CombinadorPDFs, especially the
 
 ## Regla de oro
 
-Los tests de GUI necesitan un servidor X/Wayland. Si no hay `DISPLAY`, la
-fixture `tk` de `tests/conftest.py` hace `pytest.skip("No hay display...")` y
-esos tests no se ejecutan (quedan "skip", no "pass"), por lo que el recuento de
-pasados bajará. Usa siempre un display para verificar la suite completa.
+- En **Windows y macOS** Tk abre ventanas de forma nativa: los tests de GUI se
+  ejecutan sin `DISPLAY` (la fixture `tk` de `tests/conftest.py` no salta).
+- En **Linux/BSD** hace falta un servidor X/Wayland: si no hay `DISPLAY`, la
+  fixture `tk` hace `pytest.skip("No hay display...")` y esos tests quedan en
+  "skip" (no "pass"), por lo que el recuento de pasados baja. Usa siempre un
+  display para verificar la suite completa.
 
 ## Comandos
 

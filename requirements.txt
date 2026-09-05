@@ -1,3 +1,0 @@
-# Dependencias en tiempo de ejecución de la aplicación
-sv-ttk==2.6.1
-PyPDF2==3.0.1

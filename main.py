@@ -13,7 +13,7 @@ import sv_ttk
 from pdf_gui import PDFCombinerApp
 
 
-def resource_path(ruta_relativa):
+def resource_path(ruta_relativa: str) -> str:
     """
     Resuelve rutas a recursos tanto en desarrollo como dentro del
     ejecutable generado con PyInstaller (carpeta temporal _MEIPASS).
@@ -22,7 +22,8 @@ def resource_path(ruta_relativa):
     return os.path.join(base, ruta_relativa)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Crea la ventana principal y arranca el bucle de eventos de Tk."""
     root = tk.Tk()
     app = PDFCombinerApp(root)
     try:
@@ -32,3 +33,7 @@ if __name__ == "__main__":
         pass  # icono no disponible; la app funciona igualmente
     sv_ttk.set_theme("dark")
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,9 +1,0 @@
-Adicionar botón de crear nuevo archivo con unión y borrar los separados, con cartel de alerta luego
-
-Hacer generación automática de pdfs según nombre y orden
-
-Organizar pdfs en carpetas con nombres de series al seleccionar una carpeta con todo el contenido (por extensión)
-
-arrastrar directo 
-
-notar si hay repetidos color naranja

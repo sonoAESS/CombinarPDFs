@@ -9,7 +9,7 @@ de utilidades para detectar duplicados y agrupar por serie.
 import os
 import re
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from PyPDF2 import PdfMerger
 
@@ -263,12 +263,22 @@ class PDFLogic:
             try:
                 import ctypes
 
-                return bool(ctypes.windll.shell32.IsUserAnAdmin())  # type: ignore[attr-defined]
+                # Acceso dinámico: ctypes.windll no existe en el typeshed
+                # de plataformas no Windows.
+                windll = getattr(ctypes, "windll", None)
+                if windll is None:
+                    return False
+                return bool(windll.shell32.IsUserAnAdmin())
             except Exception:
                 return False
         try:
-            return os.geteuid() == 0
-        except AttributeError:
+            # os.geteuid solo existe en POSIX; se accede dinámicamente para
+            # que mypy apruebe en Windows y Linux por igual.
+            geteuid: Callable[[], int] | None = getattr(os, "geteuid", None)
+            if geteuid is None:
+                return False
+            return geteuid() == 0
+        except (AttributeError, OSError):
             return False
 
     def combine_and_delete_originals(self, output_path: str) -> ResultadoEliminado:

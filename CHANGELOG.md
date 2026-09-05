@@ -26,6 +26,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
 - `pyproject.toml`: se eliminó el clasificador de licencia de PEP 621 que
   setuptools >= 77 rechaza al coexistir con la expresión `license = "MIT"`
   (PEP 639), lo que rompía `pip install .` / `.[dev]` en el CI.
+- `is_admin()` (`pdf_logic.py`): ahora accede de forma dinámica a
+  `ctypes.windll` y a `os.geteuid` (que no existen en el typeshed de la
+  plataforma contraria), para que mypy apruebe tanto en Windows como en Linux.
+- `mypy` ya no chequea `tools/` (`make_icon.py` depende de Pillow, que el CI
+  no instala); el resto de la aplicación se sigue verificando al completo.
 
 ### Cambiado
 

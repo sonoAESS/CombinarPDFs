@@ -66,8 +66,10 @@ python_version = "3.10"
 strict = true
 warn_unused_configs = true
 mypy_path = ["stubs"]
-files = ["main.py", "pdf_logic.py", "pdf_gui.py", "tools"]
-exclude = ["entorno/", "build/", "dist/", "tests/"]
+# tools/ se excluye del chequeo de tipos: make_icon.py requiere Pillow y es una
+# utilidad de desarrollo ajena a la aplicación (el CI no instala pillow).
+files = ["main.py", "pdf_logic.py", "pdf_gui.py"]
+exclude = ["entorno/", "build/", "dist/", "tests/", "tools/"]
 
 [[tool.mypy.overrides]]
 # typeshed no tipa curselection()/nearest() de tkinter; las llamadas

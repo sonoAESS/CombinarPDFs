@@ -21,7 +21,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
 - Licencia MIT para el proyecto.
 - Suite de tests (unitarios, de GUI e integración) con pytest.
 
+### Arreglado
+
+- `pyproject.toml`: se eliminó el clasificador de licencia de PEP 621 que
+  setuptools >= 77 rechaza al coexistir con la expresión `license = "MIT"`
+  (PEP 639), lo que rompía `pip install .` / `.[dev]` en el CI.
+
 ### Cambiado
+
+- Extras de `pyproject.toml` divididos: `test` (ruff, mypy, pytest; lo mínimo
+  para el CI) y `dev` (test + auto-py-to-exe, pillow, pre-commit, pyinstaller).
+  El job de tests del CI usa `.[test]` y ahora también ejecuta mypy.
 
 - `pdf_logic.py` devuelve tuplas con resultados explícitos (`affected_rows` cambiado
   por conteos detallados) en lugar de lanzar excepciones internas.

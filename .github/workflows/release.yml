@@ -29,13 +29,16 @@ jobs:
       - name: Comprobar soporte Tk
         run: python -c "import tkinter; print('Tk', tkinter.TkVersion)"
 
-      - name: Instalar el paquete (incluye extras de desarrollo)
+      - name: Instalar el paquete (extras de test)
         run: |
           python -m pip install --upgrade pip
-          pip install ".[dev]"
+          pip install ".[test]"
 
       - name: Ruff
         run: ruff check .
+
+      - name: Mypy (tipos)
+        run: mypy .
 
       - name: Tests de GUI (Linux, headless)
         if: runner.os == 'Linux'

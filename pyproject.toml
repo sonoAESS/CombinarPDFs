@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: X11 Applications",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Utilities",
 ]
@@ -26,6 +25,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Subconjunto mínimo para el CI y el desarrollo ligero.
+test = [
+    "mypy>=1.13",
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+# Herramientas de empaquetado/adicionales para quienes desarrollan localmente.
 dev = [
     "auto-py-to-exe>=2.46.0",
     "mypy>=1.13",

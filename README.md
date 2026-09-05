@@ -45,12 +45,13 @@ El proyecto es un paquete de Python gestionado con `pyproject.toml`:
 
 1. Clona o descarga este repositorio.
 2. (Opcional) Crea un entorno virtual.
-3. Instala el paquete con sus extras de desarrollo (incluye las herramientas
-   de calidad y los tests):
+3. Instala el paquete. Para desarrollo completo (lint, tipos, tests, icono y
+   empaquetado) usa los extras de desarrollo; para solo verificar (lint, tipos
+   y tests) basta con los extras de test:
    ```
-   pip install ".[dev]"
+   pip install ".[dev]"       # desarrollo completo
+   pip install ".[test]"      # mínimo para el CI: ruff, mypy, pytest
    ```
-   Para instalarlo solo como dependencia de ejecución: `pip install .`
 4. Ejecuta la aplicación:
    ```
    python main.py

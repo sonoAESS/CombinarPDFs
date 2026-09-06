@@ -46,7 +46,9 @@ Regla de oro: **los tests de GUI necesitan una ventana**. En Linux/BSD requieren
 una pantalla X/Wayland: si no hay `DISPLAY`, la fixture `tk` de
 `tests/conftest.py` salta esos tests automáticamente; para ejecutarlos en un
 entorno sin gráficos usa `xvfb-run -a`. En Windows y macOS se ejecutan de forma
-nativa (sin `DISPLAY`). Ejecuta la suite completa (34 tests) antes de cada commit.
+nativa (sin `DISPLAY`). Si Tk no puede crear una ventana (p. ej. instalaciones
+rotas de tkinter), la fixture también salta. Ejecuta la suite completa (34
+tests) antes de cada commit.
 
 ## Estructura
 

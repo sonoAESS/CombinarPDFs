@@ -36,6 +36,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
 - Tests de administrador multiplataforma: `test_is_admin_posix` crea
   `os.geteuid` si falta (Windows) y `test_is_admin_windows_sin_ctypes` se salta
   en Windows porque ahí `ctypes.windll` sí existe.
+- Las fixtures `tk`/`app_dnd` saltan si Tk no puede crear la ventana
+  (`TclError`), evitando que runners con tkinter roto rompan la suite.
 
 ### Cambiado
 

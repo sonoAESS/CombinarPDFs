@@ -19,6 +19,10 @@ description: Use when running the pytest suite of CombinadorPDFs, especially the
   fixture `tk` hace `pytest.skip("No hay display...")` y esos tests quedan en
   "skip" (no "pass"), por lo que el recuento de pasados baja. Usa siempre un
   display para verificar la suite completa.
+- Si `tk.Tk()` o `TkinterDnD.Tk()` lanzan `TclError` (instalación de tkinter
+  rota, p. ej. algunos runners de Windows con `tcl` incompleto), la fixture
+  también hace skip en vez de fallar. No "arregles" el test quitando el error:
+  el entorno canónico de GUI headless es Linux con `xvfb-run`.
 
 ## Comandos
 

@@ -50,13 +50,17 @@ def crear_pdf(tmp_path: Path) -> Callable[..., str]:
 @pytest.fixture
 def tk() -> Iterator:
     """
-    Crea una ventana Tk raíz. Se omite el test si no hay pantalla.
+    Crea una ventana Tk raíz. Se omite el test si no hay pantalla o si
+    Tk no puede crear una ventana (p. ej. instalaciones rotas de tkinter).
     """
     import tkinter as tk
 
     if not _hay_display():
         pytest.skip("No hay display disponible para los tests de GUI")
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("Tk no puede crear una ventana en este entorno")
     root.withdraw()
     try:
         yield root
@@ -92,7 +96,10 @@ def app_dnd():
 
     from pdf_gui import PDFCombinerApp
 
-    root = TkinterDnD.Tk()
+    try:
+        root = TkinterDnD.Tk()
+    except tk.TclError:
+        pytest.skip("Tk no puede crear una ventana en este entorno")
     root.withdraw()
     try:
         ui = PDFCombinerApp(root)

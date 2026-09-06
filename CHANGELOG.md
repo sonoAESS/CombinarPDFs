@@ -18,6 +18,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
 - Configuración del repositorio con `pyproject.toml`: paquete con entry point
   `combinador-pdfs`, extras de desarrollo, y configuración de ruff, mypy y pytest.
 - Pre-commit con hooks de ruff, ruff-format, mypy y trucos básicos de git.
+  El hook de mypy usa el entorno local (`language: system`) para que vea las
+  dependencias del proyecto (PyPDF2, sv-ttk, tkinterdnd2).
 - Licencia MIT para el proyecto.
 - Suite de tests (unitarios, de GUI e integración) con pytest.
 

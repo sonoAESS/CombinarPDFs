@@ -1,5 +1,5 @@
 """
-Tests unitarios de la lógica de negocio (pdf_logic.py).
+Tests unitarios de la lógica de negocio (combinadorpdfs.logic).
 """
 
 import os
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from conftest import paginas_de
 
-from pdf_logic import PDFLogic
+from combinadorpdfs.logic import PDFLogic
 
 
 def test_agregar_pdf_valido(crear_pdf):

@@ -8,7 +8,7 @@ hasta obtener el PDF combinado, sin tocar diálogos reales.
 import os
 from pathlib import Path
 
-from pdf_logic import PDFLogic
+from combinadorpdfs.logic import PDFLogic
 
 
 def test_flujo_completo_pdf_logic(crear_pdf, tmp_path: Path):

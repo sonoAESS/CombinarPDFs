@@ -1,50 +1,11 @@
-"""
-Punto de entrada principal de la aplicación de combinación de PDFs.
+"""Lanzador que ejecuta la aplicación sin instalar el paquete."""
 
-Este archivo inicia la aplicación gráfica.
-"""
-
-import os
 import sys
-import tkinter as tk
+from pathlib import Path
 
-import sv_ttk
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from pdf_gui import PDFCombinerApp
-
-
-def resource_path(ruta_relativa: str) -> str:
-    """
-    Resuelve rutas a recursos tanto en desarrollo como dentro del
-    ejecutable generado con PyInstaller (carpeta temporal _MEIPASS).
-    """
-    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base, ruta_relativa)
-
-
-def crear_ventana() -> tk.Tk:
-    """Crea la ventana raíz, con soporte de arrastrar y soltar si está disponible."""
-    try:
-        from tkinterdnd2 import TkinterDnD
-
-        raiz: tk.Tk = TkinterDnD.Tk()
-        return raiz
-    except (ImportError, tk.TclError):
-        return tk.Tk()
-
-
-def main() -> None:
-    """Crea la ventana principal y arranca el bucle de eventos de Tk."""
-    root = crear_ventana()
-    PDFCombinerApp(root)
-    try:
-        _icono = tk.PhotoImage(file=resource_path(os.path.join("assets", "icon.png")))
-        root.iconphoto(True, _icono)
-    except tk.TclError:
-        pass  # icono no disponible; la app funciona igualmente
-    sv_ttk.set_theme("dark")
-    root.mainloop()
-
+from combinadorpdfs.main import main  # noqa: E402
 
 if __name__ == "__main__":
     main()

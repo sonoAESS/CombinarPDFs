@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from tkinter import filedialog, messagebox, ttk
 from typing import Protocol
 
-from pdf_logic import PDFLogic
+from combinadorpdfs.logic import PDFLogic
 
 try:
     from tkinterdnd2 import DND_FILES

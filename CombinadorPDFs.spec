@@ -3,7 +3,7 @@
 Spec de PyInstaller multiplataforma para CombinadorPDFs.
 
 Genera un ejecutable único (onefile) sin consola:
-  - Windows: dist/CombinadorPDFs.exe (con assets/icon.ico embebido)
+  - Windows: dist/CombinadorPDFs.exe (con el icono embebido)
   - Linux:   dist/CombinadorPDFs
 
 Uso:
@@ -60,7 +60,7 @@ def _recoleccion_tkdnd():
 
 tkdnd_binaries, tkdnd_datas = _recoleccion_tkdnd()
 
-icono = "assets/icon.ico" if sys.platform == "win32" else None
+icono = "src/combinadorpdfs/assets/icon.ico" if sys.platform == "win32" else None
 
 # ------------------------------------------------------------------
 # Tcl/Tk 9: algunos intérpretes (p. ej. python-build-standalone/uv)
@@ -86,7 +86,7 @@ a = Analysis(
     ["main.py"],
     pathex=[],
     binaries=sv_binaries + binaries_tcltk + tkdnd_binaries,
-    datas=[("assets/icon.png", "assets")] + sv_datas + datas_tcltk + tkdnd_datas,
+    datas=[("src/combinadorpdfs/assets/icon.png", "assets")] + sv_datas + datas_tcltk + tkdnd_datas,
     hiddenimports=sv_hiddenimports,
     hookspath=[],
     hooksconfig={},

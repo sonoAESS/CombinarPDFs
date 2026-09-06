@@ -1,5 +1,5 @@
 """
-Tests básicos de la interfaz gráfica (pdf_gui.py).
+Tests básicos de la interfaz gráfica (combinadorpdfs.gui).
 
 Se ejecutan únicamente si hay display disponible; en caso contrario
 el fixture `tk` los omite automáticamente.
@@ -11,6 +11,10 @@ from pathlib import Path
 
 def _estado(boton) -> str:
     return str(boton.cget("state"))
+
+
+def _sin_dialogo(*_args, **_kwargs) -> None:
+    return None
 
 
 def test_estado_inicial(app):
@@ -35,7 +39,7 @@ def test_agregar_pdfs_omite_duplicados_y_errores(app, crear_pdf, monkeypatch):
     invalido = str(Path(a).with_suffix(".txt"))
     with open(invalido, "w") as fh:
         fh.write("no es pdf")
-    monkeypatch.setattr("pdf_gui.messagebox.showwarning", lambda *a, **k: None)
+    monkeypatch.setattr("combinadorpdfs.gui.messagebox.showwarning", _sin_dialogo)
     app.agregar_rutas([a, a, invalido])
     assert app.listbox.size() == 1
 
@@ -53,7 +57,7 @@ def test_eliminar_seleccionados(app, crear_pdf):
 
 def test_vaciar_lista(app, crear_pdf, monkeypatch):
     app.agregar_rutas([crear_pdf("a.pdf"), crear_pdf("b.pdf")])
-    monkeypatch.setattr("pdf_gui.messagebox.askyesno", lambda *a, **k: True)
+    monkeypatch.setattr("combinadorpdfs.gui.messagebox.askyesno", lambda *a, **k: True)
     app.vaciar_lista()
     assert app.listbox.size() == 0
     assert _estado(app.btn_vaciar) == "disabled"
@@ -73,32 +77,36 @@ def test_mover_arriba_y_abajo(app, crear_pdf):
 def test_combinar_pdfs_desde_gui(app, crear_pdf, monkeypatch, tmp_path: Path):
     app.agregar_rutas([crear_pdf("a.pdf", 2), crear_pdf("b.pdf", 3)])
     salida = str(tmp_path / "salida.pdf")
-    monkeypatch.setattr("pdf_gui.filedialog.asksaveasfilename", lambda *a, **k: salida)
-    monkeypatch.setattr("pdf_gui.messagebox.showinfo", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "combinadorpdfs.gui.filedialog.asksaveasfilename", lambda *a, **k: salida
+    )
+    monkeypatch.setattr("combinadorpdfs.gui.messagebox.showinfo", _sin_dialogo)
     app.combinar_pdfs()
     assert os.path.exists(salida)
 
 
 def test_combinar_y_eliminar_sin_permisos(app, crear_pdf, monkeypatch, tmp_path: Path):
-    from pdf_logic import PDFLogic
+    from combinadorpdfs.logic import PDFLogic
 
     app.agregar_rutas([crear_pdf("a.pdf"), crear_pdf("b.pdf")])
     salida = str(tmp_path / "salida.pdf")
-    monkeypatch.setattr("pdf_gui.filedialog.asksaveasfilename", lambda *a, **k: salida)
-    monkeypatch.setattr("pdf_gui.messagebox.askyesno", lambda *a, **k: True)
+    monkeypatch.setattr(
+        "combinadorpdfs.gui.filedialog.asksaveasfilename", lambda *a, **k: salida
+    )
+    monkeypatch.setattr("combinadorpdfs.gui.messagebox.askyesno", lambda *a, **k: True)
     monkeypatch.setattr(PDFLogic, "is_admin", staticmethod(lambda: False))
     errores = []
 
     def _showerror(*a):
         errores.append(a)
 
-    monkeypatch.setattr("pdf_gui.messagebox.showerror", _showerror)
+    monkeypatch.setattr("combinadorpdfs.gui.messagebox.showerror", _showerror)
     app.combinar_y_eliminar()
     assert errores  # sin permisos de admin debe mostrarse un error
 
 
 def test_duplicados_marcados_en_naranja(app, crear_pdf, tmp_path):
-    from pdf_gui import COLOR_DUPLICADO
+    from combinadorpdfs.gui import COLOR_DUPLICADO
 
     a = crear_pdf("comun.pdf")
     b = tmp_path / "sub" / "comun.pdf"
@@ -118,7 +126,7 @@ def test_agregar_carpeta_agrupa_por_serie(app, crear_pdf, tmp_path, monkeypatch)
     for nombre in ["Zeta 5.pdf", "Alfa 10.pdf", "Zeta 1.pdf", "Alfa 2.pdf"]:
         crear_pdf(nombre)
     monkeypatch.setattr(
-        "pdf_gui.filedialog.askdirectory", lambda *a, **k: str(tmp_path)
+        "combinadorpdfs.gui.filedialog.askdirectory", lambda *a, **k: str(tmp_path)
     )
     app.agregar_carpeta()
     bases = [app.listbox.get(i) for i in range(app.listbox.size())]

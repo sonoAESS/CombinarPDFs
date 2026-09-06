@@ -20,6 +20,10 @@ repos:
     hooks:
       - id: mypy
         language: system
-        files: ^(main|pdf_logic|pdf_gui)\.py$
+        files: ^(main\.py|src/combinadorpdfs/(main|gui|logic)\.py)$
         pass_filenames: false
-        args: [main.py, pdf_logic.py, pdf_gui.py]
+        args:
+          - main.py
+          - src/combinadorpdfs/main.py
+          - src/combinadorpdfs/gui.py
+          - src/combinadorpdfs/logic.py

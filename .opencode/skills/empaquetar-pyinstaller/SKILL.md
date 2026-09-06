@@ -49,8 +49,8 @@ El resultado queda en `dist/CombinadorPDFs` (Linux) o `dist/CombinadorPDFs.exe`
 ### sv-ttk e icono
 
 - `collect_all("sv_ttk")` empaqueta temas y binarios del tema Sun Valley.
-- El icono se empaqueta con `assets/icon.png` (datas) y, en Windows, se embebe
-  `assets/icon.ico` en el EXE.
+- El icono se empaqueta con `src/combinadorpdfs/assets/icon.png` (datas) y, en
+  Windows, se embebe `src/combinadorpdfs/assets/icon.ico` en el EXE.
 
 ## Verificar el binario tras compilar
 

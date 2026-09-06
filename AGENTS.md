@@ -53,13 +53,12 @@ tests) antes de cada commit.
 ## Estructura
 
 ```
-main.py                 Punto de entrada: crear_ventana() y main()
-pdf_gui.py              Interfaz gráfica (PDFCombinerApp)
-pdf_logic.py            Lógica de negocio (PDFLogic y utilidades)
+main.py                 Lanzador: ejecuta el paquete sin instalarlo
+src/combinadorpdfs/     Paquete principal (main.py, gui.py, logic.py, __init__.py)
+src/combinadorpdfs/assets/  Icono (icon.png e icon.ico)
 tests/                  pytest (conftest.py con fixtures tk/app/crear_pdf/paginas_de)
 stubs/                  Stubs de tipos para tkinterdnd2 (para mypy)
 tools/                  Generación del icono y runtime hooks de PyInstaller
-assets/                 Icono (icon.png e icon.ico)
 CombinadorPDFs.spec     Spec de PyInstaller
 .github/workflows/      CI: job test (ruff + pytest) y job build/release
 ```
@@ -70,7 +69,7 @@ CombinadorPDFs.spec     Spec de PyInstaller
 - Type hints completos en todo el código; pasan `ruff` (reglas
   E/F/I/UP/B/SIM/W) y `mypy --strict`.
 - No añadir comentarios de relleno; solo cuando aclaran una decisión.
-- `pdf_logic.py` expone resultados explícitos (tuplas `(bool, str)` o conteos),
+- `combinadorpdfs/logic.py` expone resultados explícitos (tuplas `(bool, str)` o conteos),
   no excepciones internas para flujos esperados. La GUI traduce esos resultados
   a `messagebox`/estado.
 - El resaltado de duplicados usa `COLOR_DUPLICADO = "#e8a33d"`.

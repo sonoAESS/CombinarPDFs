@@ -62,8 +62,8 @@ bloquean el bucle de Tk esperando clic del usuario. Solución: parchear el
 `messagebox` con `monkeypatch`:
 
 ```python
-monkeypatch.setattr("pdf_gui.messagebox.showwarning", lambda *a, **k: None)
-monkeypatch.setattr("pdf_gui.messagebox.showinfo", lambda *a, **k: None)
+monkeypatch.setattr("combinadorpdfs.gui.messagebox.showwarning", lambda *a, **k: None)
+monkeypatch.setattr("combinadorpdfs.gui.messagebox.showinfo", lambda *a, **k: None)
 ```
 
 Aplica también `askyesno`/`showerror` si el test los dispara. La marca de

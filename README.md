@@ -97,11 +97,11 @@ compila ambos y los adjunta a la release.
 
 ## Estructura del Proyecto
 
-- `main.py`: Punto de entrada de la aplicación.
-- `pdf_gui.py`: Interfaz gráfica de usuario.
-- `pdf_logic.py`: Lógica para combinar PDFs.
+- `main.py`: Lanzador que ejecuta el paquete sin instalarlo (`python main.py`).
+- `src/combinadorpdfs/`: Paquete principal (`main.py` con el punto de entrada,
+  `gui.py` con la interfaz y `logic.py` con la lógica de combinación).
+- `src/combinadorpdfs/assets/`: Icono de la aplicación (PNG e ICO).
 - `pyproject.toml`: Configuración del paquete, dependencias y herramientas (ruff, mypy, pytest).
-- `assets/`: Icono de la aplicación (PNG e ICO).
 - `tools/`: Scripts auxiliares (generación del icono, hooks de PyInstaller).
 - `stubs/`: Stubs de tipos para tkinterdnd2.
 - `tests/`: Tests unitarios, de interfaz e integración (pytest).

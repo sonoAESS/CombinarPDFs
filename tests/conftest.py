@@ -72,7 +72,7 @@ def tk() -> Iterator:
 @pytest.fixture
 def app(tk):
     """Crea una instancia de la aplicación GUI sobre la ventana raíz."""
-    from pdf_gui import PDFCombinerApp
+    from combinadorpdfs.gui import PDFCombinerApp
 
     ui = PDFCombinerApp(tk)
     tk.update_idletasks()
@@ -94,7 +94,7 @@ def app_dnd():
         pytest.skip("No hay display disponible para los tests de GUI")
     import tkinter as tk
 
-    from pdf_gui import PDFCombinerApp
+    from combinadorpdfs.gui import PDFCombinerApp
 
     try:
         root = TkinterDnD.Tk()

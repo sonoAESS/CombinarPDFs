@@ -41,6 +41,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
 
 ### Cambiado
 
+- Reorganizada la estructura del proyecto a un layout `src/`: el código vive
+  ahora en el paquete instalable `combinadorpdfs` (`main.py`, `gui.py`,
+  `logic.py` y `assets/`), con un `main.py` raíz como lanzador para ejecutar la
+  app sin instalarla. Se actualizaron `pyproject.toml` (entry point, paquetes y
+  datos), el spec de PyInstaller, los tests y la documentación.
+
 - Extras de `pyproject.toml` divididos: `test` (ruff, mypy, pytest; lo mínimo
   para el CI) y `dev` (test + auto-py-to-exe, pillow, pre-commit, pyinstaller).
   El job de tests del CI usa `.[test]` y ahora también ejecuta mypy.

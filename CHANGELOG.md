@@ -33,6 +33,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y las 
   plataforma contraria), para que mypy apruebe tanto en Windows como en Linux.
 - `mypy` ya no chequea `tools/` (`make_icon.py` depende de Pillow, que el CI
   no instala); el resto de la aplicación se sigue verificando al completo.
+- Tests de administrador multiplataforma: `test_is_admin_posix` crea
+  `os.geteuid` si falta (Windows) y `test_is_admin_windows_sin_ctypes` se salta
+  en Windows porque ahí `ctypes.windll` sí existe.
 
 ### Cambiado
 

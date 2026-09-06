@@ -152,16 +152,20 @@ def test_combine_pdfs_vacio():
 def test_is_admin_posix(monkeypatch):
     logic = PDFLogic()
     monkeypatch.setattr(os, "name", "posix")
-    monkeypatch.setattr(os, "geteuid", lambda: 1000)
+    # En Windows os no tiene geteuid; raising=False lo crea si falta.
+    monkeypatch.setattr(os, "geteuid", lambda: 1000, raising=False)
     assert logic.is_admin() is False
-    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    monkeypatch.setattr(os, "geteuid", lambda: 0, raising=False)
     assert logic.is_admin() is True
 
 
 def test_is_admin_windows_sin_ctypes(monkeypatch):
+    # Escenario solo reproducible fuera de Windows: allí ctypes.windll no
+    # existe y la rama "nt" debe devolver False sin lanzar excepción.
+    if os.name == "nt":
+        pytest.skip("ctypes.windll existe en Windows y no se puede simular su ausencia")
     logic = PDFLogic()
     monkeypatch.setattr(os, "name", "nt")
-    # En Linux no existe ctypes.windll: la rama debe devolver False
     assert logic.is_admin() is False
 
 
